@@ -16,7 +16,8 @@ source_url = os.environ.get("SOURCE_URL", "")
 
 
 def read_json(url):
-    with urllib.request.urlopen(url, timeout=60) as response:
+    request = urllib.request.Request(url, headers={"User-Agent": "BlueBit-Release/1.0"})
+    with urllib.request.urlopen(request, timeout=60) as response:
         return json.loads(response.read(65536))
 
 
@@ -73,7 +74,8 @@ digest = hashlib.sha256()
 with open(target, "wb") as output:
     for index, url in enumerate(sources):
         part_bytes = 0
-        with urllib.request.urlopen(url, timeout=120) as response:
+        request = urllib.request.Request(url, headers={"User-Agent": "BlueBit-Release/1.0"})
+        with urllib.request.urlopen(request, timeout=120) as response:
             while True:
                 chunk = response.read(1024 * 1024)
                 if not chunk:
