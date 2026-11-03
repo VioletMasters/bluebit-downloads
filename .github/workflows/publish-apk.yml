@@ -18,6 +18,9 @@ on:
       version_code:
         description: Android build code for an Expo import
         required: false
+      release_sync_url:
+        description: Public BlueBit manifest synchronization endpoint
+        required: false
 permissions:
   contents: write
 concurrency:
@@ -53,3 +56,8 @@ jobs:
           fi
           gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/BlueBit.apk" "$RUNNER_TEMP/latest.json" --clobber
           gh release edit "$RELEASE_TAG" --draft=false --latest
+      - name: Refresh website and installed-app update details
+        if: inputs.release_sync_url != ''
+        env:
+          RELEASE_SYNC_URL: ${{ inputs.release_sync_url }}
+        run: curl --fail-with-body --retry 4 --retry-all-errors --max-time 30 --request POST "$RELEASE_SYNC_URL"
