@@ -1,7 +1,11 @@
 name: Publish BlueBit APK
+run-name: BlueBit APK ${{ inputs.staging_id || inputs.version_code }}
 on:
   workflow_dispatch:
     inputs:
+      staging_id:
+        description: Dashboard upload reference
+        required: false
       staging_manifest_url:
         description: Public BlueBit staging manifest URL
         required: false
@@ -24,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Download and verify APK
         env:
           STAGING_MANIFEST_URL: ${{ inputs.staging_manifest_url }}
