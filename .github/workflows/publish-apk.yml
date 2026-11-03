@@ -1,0 +1,51 @@
+name: Publish BlueBit APK
+on:
+  workflow_dispatch:
+    inputs:
+      staging_manifest_url:
+        description: Public BlueBit staging manifest URL
+        required: false
+      source_url:
+        description: Expo APK URL for an initial import
+        required: false
+      version:
+        description: Version name for an Expo import
+        required: false
+      version_code:
+        description: Android build code for an Expo import
+        required: false
+permissions:
+  contents: write
+concurrency:
+  group: bluebit-apk-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify APK
+        env:
+          STAGING_MANIFEST_URL: ${{ inputs.staging_manifest_url }}
+          SOURCE_URL: ${{ inputs.source_url }}
+          APP_VERSION: ${{ inputs.version }}
+          APP_VERSION_CODE: ${{ inputs.version_code }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/publish-apk.py
+      - name: Publish verified release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          existing="$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' 2>/dev/null || true)"
+          if [ "$existing" = "false" ]; then
+            echo "This build has already been published; refusing to replace it."
+            exit 1
+          fi
+          if [ -z "$existing" ]; then
+            gh release create "$RELEASE_TAG" --draft --title "BlueBit $RELEASE_VERSION" --notes "Official BlueBit Android APK. Build $RELEASE_BUILD_CODE."
+          fi
+          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/BlueBit.apk" "$RUNNER_TEMP/latest.json" --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest
