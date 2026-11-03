@@ -1,5 +1,6 @@
 """Release-only automation. Never reads or publishes the BlueBit application source."""
 import hashlib
+import glob
 import json
 import os
 import re
@@ -96,6 +97,17 @@ if expected_size is not None and total != expected_size:
 with zipfile.ZipFile(target) as archive:
     if "AndroidManifest.xml" not in archive.namelist() or archive.testzip() is not None:
         raise ValueError("The file is not a valid, intact Android APK")
+
+android_home = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT", "")
+tools = sorted(glob.glob(os.path.join(android_home, "build-tools", "*", "aapt")))
+if not tools:
+    raise RuntimeError("Android build tools are required to verify the APK version")
+badging = subprocess.run([tools[-1], "dump", "badging", target], capture_output=True, text=True, check=True)
+package = next((line for line in badging.stdout.splitlines() if line.startswith("package:")), "")
+actual_code = re.search(r"versionCode='(\d+)'", package)
+actual_version = re.search(r"versionName='([^']+)'", package)
+if not actual_code or not actual_version or int(actual_code.group(1)) != build_code or actual_version.group(1) != version:
+    raise ValueError("Version name/build code do not match the actual APK. Correct the dashboard values and retry.")
 
 manifest = {
     "version": version,
